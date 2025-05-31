@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::AnchorSerialize;
 
 declare_id!("9DDurAcNao6xJQNZwDbuB7E4RVTdPsoaiY93358JAkdG");
 
@@ -30,7 +31,29 @@ pub mod poll_app {
         poll.votes[option_index as usize] += 1;
         Ok(())
     }
+
+    pub fn get_results(ctx: Context<GetResults>) -> Result<PollResults> {
+        let poll = &ctx.accounts.poll;
+    
+        let total_votes = poll.votes.iter().sum::<u32>();
+        let paired_results: Vec<PollResultItem> = poll
+            .options
+            .iter()
+            .zip(poll.votes.iter())
+            .map(|(option, &votes)| PollResultItem {
+                option: option.clone(),
+                votes,
+            })
+            .collect();
+    
+        Ok(PollResults {
+            question: poll.question.clone(),
+            results: paired_results,
+            total_votes,
+        })
+    }
 }
+    
 
 #[account]
 pub struct Poll {
@@ -60,6 +83,26 @@ pub struct Vote<'info> {
     #[account(mut)]
     pub poll: Account<'info, Poll>,
     pub user: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct GetResults<'info> {
+    #[account()]
+    pub poll: Account<'info, Poll>,
+    pub user: Signer<'info>,
+}
+
+#[derive(Debug, AnchorSerialize, AnchorDeserialize)]
+pub struct PollResults {
+    pub question: String,
+    pub results: Vec<PollResultItem>,
+    pub total_votes: u32,
+}
+
+#[derive(Debug, AnchorSerialize, AnchorDeserialize)]
+pub struct PollResultItem {
+    pub option: String,
+    pub votes: u32,
 }
 
 #[error_code]
