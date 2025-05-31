@@ -12,6 +12,7 @@ describe("poll_app", () => {
 
   const question = "What's your favorite color?";
   const options = ["Red", "Blue", "Green", "Yellow"];
+  const duration = 60; // 1 min
 
   let pollPda: anchor.web3.PublicKey;
 
@@ -24,7 +25,7 @@ describe("poll_app", () => {
 
   it("creates a poll", async () => {
     await program.methods
-      .createPoll(question, options)
+      .createPoll(question, options, new anchor.BN(duration))
       .accounts({
         poll: pollPda,
         user: user.publicKey,
@@ -84,6 +85,19 @@ describe("poll_app", () => {
     expect(results.totalVotes).to.equal(1);
   });
 
+  it("returns the winning option", async () => {
+    const winner = await program.methods
+      .getWinner()
+      .accounts({
+        poll: pollPda,
+        user: user.publicKey,
+      })
+      .view();
+
+    expect(winner.options).to.eql(["Blue"]);
+    expect(winner.votes).to.equal(1);
+  });
+
   it("allows another user to create a different poll", async () => {
     const anotherUser = anchor.web3.Keypair.generate();
 
@@ -102,7 +116,7 @@ describe("poll_app", () => {
     const otherOptions = ["Yes", "No"];
 
     await program.methods
-      .createPoll("Do you like Solana?", otherOptions)
+      .createPoll("Do you like Solana?", otherOptions, new anchor.BN(60))
       .accounts({
         poll: anotherPollPda,
         user: anotherUser.publicKey,

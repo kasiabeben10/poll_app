@@ -11,26 +11,35 @@ pub mod poll_app {
         ctx: Context<CreatePoll>,
         question: String,
         options: Vec<String>,
+        duration: i64, // in seconds
     ) -> Result<()> {
         let poll = &mut ctx.accounts.poll;
         poll.question = question;
         poll.options = options;
         poll.votes = vec![0; poll.options.len()];
-        poll.bump = ctx.bumps.poll; // Correct way to access the bump
+        poll.bump = ctx.bumps.poll;
+        poll.created_at = Clock::get()?.unix_timestamp;
+        poll.duration = duration;
         Ok(())
     }
 
     pub fn vote(ctx: Context<Vote>, option_index: u8) -> Result<()> {
         let poll = &mut ctx.accounts.poll;
-        
+    
+        let now = Clock::get()?.unix_timestamp;
+        if poll.duration > 0 && now > poll.created_at + poll.duration {
+            return Err(ErrorCode::PollClosed.into());
+        }
+    
         require!(
             (option_index as usize) < poll.options.len(),
             ErrorCode::InvalidOption
         );
-        
+    
         poll.votes[option_index as usize] += 1;
         Ok(())
-    }
+    }    
+    
 
     pub fn get_results(ctx: Context<GetResults>) -> Result<PollResults> {
         let poll = &ctx.accounts.poll;
@@ -52,6 +61,25 @@ pub mod poll_app {
             total_votes,
         })
     }
+
+    pub fn get_winner(ctx: Context<GetResults>) -> Result<Winner> {
+        let poll = &ctx.accounts.poll;
+        let max_votes = *poll.votes.iter().max().unwrap_or(&0);
+    
+        let winners: Vec<String> = poll
+            .options
+            .iter()
+            .zip(poll.votes.iter())
+            .filter(|&(_, &votes)| votes == max_votes)
+            .map(|(option, _)| option.clone())
+            .collect();
+    
+        Ok(Winner {
+            options: winners,
+            votes: max_votes,
+        })
+    }
+    
 }
     
 
@@ -61,6 +89,8 @@ pub struct Poll {
     pub options: Vec<String>,
     pub votes: Vec<u32>,
     pub bump: u8,
+    pub created_at: i64,
+    pub duration: i64,
 }
 
 #[derive(Accounts)]
@@ -68,7 +98,7 @@ pub struct CreatePoll<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 4 + 256 + 4 + (4 + 256) * 4 + 4 + 4 * 4 + 1,
+        space = 8 + 4 + 256 + 4 + (4 + 256) * 4 + 4 + 4 * 4 + 1 + 8 + 8,
         seeds = [b"poll", user.key().as_ref()],
         bump
     )]
@@ -105,8 +135,16 @@ pub struct PollResultItem {
     pub votes: u32,
 }
 
+#[derive(Debug, AnchorSerialize, AnchorDeserialize)]
+pub struct Winner {
+    pub options: Vec<String>,
+    pub votes: u32,
+}
+
 #[error_code]
 pub enum ErrorCode {
     #[msg("Invalid option index")]
     InvalidOption,
+    #[msg("Poll is closed")]
+    PollClosed,
 }
