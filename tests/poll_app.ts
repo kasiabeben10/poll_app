@@ -51,6 +51,44 @@ describe("poll_app", () => {
     expect(pollAccount.votes).to.eql([0, 1, 0, 0]);
   });
 
+  it("rejects voting twice by the same user", async () => {
+    try {
+      await program.methods
+        .vote(2)
+        .accounts({
+          poll: pollPda,
+          user: user.publicKey,
+        })
+        .rpc();
+      expect.fail("Should have thrown an error for double voting");
+    } catch (err) {
+      expect(err.error.errorMessage).to.include("User has already voted");
+    }
+  });
+
+  it("allows a different user to vote once successfully", async () => {
+    const anotherUser = anchor.web3.Keypair.generate();
+  
+    // airdrop sol to new user
+    const sig = await provider.connection.requestAirdrop(
+      anotherUser.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await provider.connection.confirmTransaction(sig);
+  
+    await program.methods
+      .vote(2)
+      .accounts({
+        poll: pollPda,
+        user: anotherUser.publicKey,
+      })
+      .signers([anotherUser])
+      .rpc();
+  
+    const pollAccount = await program.account.poll.fetch(pollPda);
+    expect(pollAccount.votes).to.eql([0, 1, 1, 0]);
+  });
+
   it("rejects invalid option index", async () => {
     try {
       await program.methods
@@ -79,10 +117,10 @@ describe("poll_app", () => {
     expect(results.results).to.eql([
       { option: "Red", votes: 0 },
       { option: "Blue", votes: 1 },
-      { option: "Green", votes: 0 },
+      { option: "Green", votes: 1 },
       { option: "Yellow", votes: 0 },
     ]);
-    expect(results.totalVotes).to.equal(1);
+    expect(results.totalVotes).to.equal(2);
   });
 
   it("returns the winning option", async () => {
@@ -94,7 +132,7 @@ describe("poll_app", () => {
       })
       .view();
 
-    expect(winner.options).to.eql(["Blue"]);
+    expect(winner.options).to.eql(["Blue", "Green"]);
     expect(winner.votes).to.equal(1);
   });
 

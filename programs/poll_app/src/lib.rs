@@ -20,11 +20,13 @@ pub mod poll_app {
         poll.bump = ctx.bumps.poll;
         poll.created_at = Clock::get()?.unix_timestamp;
         poll.duration = duration;
+        poll.voters = vec![];
         Ok(())
     }
 
     pub fn vote(ctx: Context<Vote>, option_index: u8) -> Result<()> {
         let poll = &mut ctx.accounts.poll;
+        let user = ctx.accounts.user.key();
     
         let now = Clock::get()?.unix_timestamp;
         if poll.duration > 0 && now > poll.created_at + poll.duration {
@@ -35,8 +37,13 @@ pub mod poll_app {
             (option_index as usize) < poll.options.len(),
             ErrorCode::InvalidOption
         );
+
+        if poll.voters.contains(&user) {
+            return Err(ErrorCode::AlreadyVoted.into());
+        }
     
         poll.votes[option_index as usize] += 1;
+        poll.voters.push(user);
         Ok(())
     }    
     
@@ -88,6 +95,7 @@ pub struct Poll {
     pub question: String,
     pub options: Vec<String>,
     pub votes: Vec<u32>,
+    pub voters: Vec<Pubkey>,
     pub bump: u8,
     pub created_at: i64,
     pub duration: i64,
@@ -98,7 +106,7 @@ pub struct CreatePoll<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 4 + 256 + 4 + (4 + 256) * 4 + 4 + 4 * 4 + 1 + 8 + 8,
+        space = 8 + 4 + 256 + 4 + (4 + 256) * 4 + 4 + 4 * 4 + 4 + (32 * 100) + 1 + 8 + 8,
         seeds = [b"poll", user.key().as_ref()],
         bump
     )]
@@ -147,4 +155,6 @@ pub enum ErrorCode {
     InvalidOption,
     #[msg("Poll is closed")]
     PollClosed,
+    #[msg("User has already voted")]
+    AlreadyVoted,
 }
