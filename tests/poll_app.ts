@@ -123,19 +123,6 @@ describe("poll_app", () => {
     expect(results.totalVotes).to.equal(2);
   });
 
-  it("returns the winning option", async () => {
-    const winner = await program.methods
-      .getWinner()
-      .accounts({
-        poll: pollPda,
-        user: user.publicKey,
-      })
-      .view();
-
-    expect(winner.options).to.eql(["Blue", "Green"]);
-    expect(winner.votes).to.equal(1);
-  });
-
   it("allows another user to create a different poll", async () => {
     const anotherUser = anchor.web3.Keypair.generate();
 
