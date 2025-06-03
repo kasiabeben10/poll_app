@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "programs/*"
+    "programs/poll_app",
+    "cli"
 ]
 resolver = "2"
 
