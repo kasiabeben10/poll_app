@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::AnchorSerialize;
 
-declare_id!("9DDurAcNao6xJQNZwDbuB7E4RVTdPsoaiY93358JAkdG");
+declare_id!("8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5");
 
 #[program]
 pub mod poll_app {
@@ -68,25 +68,6 @@ pub mod poll_app {
             total_votes,
         })
     }
-
-    pub fn get_winner(ctx: Context<GetResults>) -> Result<Winner> {
-        let poll = &ctx.accounts.poll;
-        let max_votes = *poll.votes.iter().max().unwrap_or(&0);
-    
-        let winners: Vec<String> = poll
-            .options
-            .iter()
-            .zip(poll.votes.iter())
-            .filter(|&(_, &votes)| votes == max_votes)
-            .map(|(option, _)| option.clone())
-            .collect();
-    
-        Ok(Winner {
-            options: winners,
-            votes: max_votes,
-        })
-    }
-    
 }
     
 
@@ -140,12 +121,6 @@ pub struct PollResults {
 #[derive(Debug, AnchorSerialize, AnchorDeserialize)]
 pub struct PollResultItem {
     pub option: String,
-    pub votes: u32,
-}
-
-#[derive(Debug, AnchorSerialize, AnchorDeserialize)]
-pub struct Winner {
-    pub options: Vec<String>,
     pub votes: u32,
 }
 
