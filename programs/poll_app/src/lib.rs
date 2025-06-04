@@ -22,16 +22,15 @@ pub mod poll_app {
     ) -> Result<()> {
         require!(question.len() <= 256, ErrorCode::QuestionTooLong);
         require!(!question.is_empty(), ErrorCode::EmptyQuestion);
-        require!(options.len() >= 1, ErrorCode::NotEnoughOptions);
-        require!(options.len() <=5, ErrorCode::TooMuchOptions);
+        require!(options.len() >= 2, ErrorCode::NotEnoughOptions);
+        require!(options.len() <= 5, ErrorCode::TooMuchOptions);
         require!(options.iter().all(|o| !o.is_empty()), ErrorCode::EmptyOption);
         require!(duration >= 0, ErrorCode::InvalidDuration);
         
         
         let user_stats = &mut ctx.accounts.user_stats;
-        user_stats.poll_count += 1;
-
         let poll = &mut ctx.accounts.poll;
+
         poll.question = question;
         poll.options = options;
         poll.votes = vec![0; poll.options.len()];
@@ -41,6 +40,8 @@ pub mod poll_app {
         poll.voters = Vec::new();
         poll.voter_count = 0;
         poll.seed = Clock::get()?.unix_timestamp.to_le_bytes();
+
+        user_stats.poll_count += 1;
         Ok(())
     }
 
@@ -59,18 +60,10 @@ pub mod poll_app {
         );
 
         let user_seed = sha256(&user.to_bytes()).to_bytes();
-        let poll_seed = sha256(&poll.seed).to_bytes();
-        
-        // Create a combined array by concatenating the two 32-byte arrays
-        let mut combined = Vec::with_capacity(64);
-        combined.extend_from_slice(&user_seed);
-        combined.extend_from_slice(&poll_seed);
-        
+        let combined = [user_seed.to_vec(), poll.seed.to_vec()].concat();
         let commitment = sha256(&combined).to_bytes();
         
-        if poll.voters.contains(&commitment) {
-            return Err(ErrorCode::AlreadyVoted.into());
-        }
+        require!(!poll.voters.contains(&commitment), ErrorCode::AlreadyVoted);
     
         poll.votes[option_index as usize] += 1;
         poll.voter_count += 1;
@@ -80,7 +73,7 @@ pub mod poll_app {
             user,
             poll: ctx.accounts.poll.key(),
             option_index,
-            timestamp: Clock::get()?.unix_timestamp,
+            timestamp: now,
         });
         Ok(())
     }   
@@ -126,30 +119,6 @@ pub struct Poll {
     pub duration: i64,
     pub voter_count: u32,
     pub seed: [u8; 8], // Using 8 bytes for seed (timestamp)
-}
-
-impl Poll {
-    pub fn calculate_space(options: &[String], max_voters: usize) -> usize {
-        // Discriminator
-        let mut space = 8;
-        
-        // Question: 4 (length) + 256 (max text)
-        space += 4 + 256;
-        
-        // Options: 4 (length) + sum (4 + string length) for each option
-        space += 4 + options.iter().map(|o| 4 + o.len()).sum::<usize>();
-        
-        // Votes: 4 (length) + 4 * number of options
-        space += 4 + options.len() * 4;
-        
-        // voters: 4 (length) + 32 * max_voters
-        space += 4 + max_voters * 32;
-        
-        // Other fields: bump (1) + created_at (8) + duration (8) + voter_count (4) + seed (8)
-        space += 1 + 8 + 8 + 4 + 8;
-        
-        space
-    }
 }
 
 #[derive(Accounts)]
