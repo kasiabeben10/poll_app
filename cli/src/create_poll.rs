@@ -66,7 +66,7 @@ pub fn handle_create_poll(
             println!("📝 Question: {}", question);
             println!("📌 Options:");
             for (i, option) in options.iter().enumerate() {
-                println!("  {}. {}", i + 1, option);
+                println!("  {}. {}", i, option);
             }
             println!("Validity: {} min", duration/60 );
 
