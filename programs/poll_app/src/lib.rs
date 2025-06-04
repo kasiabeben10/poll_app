@@ -8,9 +8,11 @@ declare_id!("8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5");
 pub mod poll_app {
     use super::*;
 
-    pub fn initialize_user_stats(ctx: Context<InitializeUserStats>) -> Result<()> {
+    pub fn initialize_user(ctx: Context<InitializeUser>) -> Result<()> {
         let user_stats = &mut ctx.accounts.user_stats;
-        user_stats.poll_count = 0;
+        user_stats.user = ctx.accounts.user.key();
+        user_stats.polls_count = 0;
+        user_stats.bump = ctx.bumps.user_stats;
         Ok(())
     }
 
@@ -20,6 +22,11 @@ pub mod poll_app {
         options: Vec<String>,
         duration: i64, // in seconds
     ) -> Result<()> {
+
+        if ctx.accounts.user_stats.user != ctx.accounts.user.key() {
+            return Err(ErrorCode::UserNotInitialized.into());
+        }
+
         require!(question.len() <= 256, ErrorCode::QuestionTooLong);
         require!(!question.is_empty(), ErrorCode::EmptyQuestion);
         require!(options.len() >= 2, ErrorCode::NotEnoughOptions);
@@ -27,10 +34,7 @@ pub mod poll_app {
         require!(options.iter().all(|o| !o.is_empty()), ErrorCode::EmptyOption);
         require!(duration >= 0, ErrorCode::InvalidDuration);
         
-        
-        let user_stats = &mut ctx.accounts.user_stats;
         let poll = &mut ctx.accounts.poll;
-
         poll.question = question;
         poll.options = options;
         poll.votes = vec![0; poll.options.len()];
@@ -41,7 +45,9 @@ pub mod poll_app {
         poll.voter_count = 0;
         poll.seed = Clock::get()?.unix_timestamp.to_le_bytes();
 
-        user_stats.poll_count += 1;
+        let user_stats = &mut ctx.accounts.user_stats;
+        user_stats.polls_count += 1;
+
         Ok(())
     }
 
@@ -122,11 +128,11 @@ pub struct Poll {
 }
 
 #[derive(Accounts)]
-pub struct InitializeUserStats<'info> {
+pub struct InitializeUser<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 4, // 8 for discriminator, 4 for u32
+        space = 8 + 32 + 4 + 1,
         seeds = [b"user_stats", user.key().as_ref()],
         bump
     )]
@@ -138,8 +144,12 @@ pub struct InitializeUserStats<'info> {
 
 #[account]
 pub struct UserStats {
-    pub poll_count: u32,
+    pub user: Pubkey,
+    pub polls_count: u32,
+    pub bump: u8,
 }
+
+const MAX_VOTERS: usize = 10;
 
 #[derive(Accounts)]
 #[instruction(question: String, options: Vec<String>)]
@@ -148,15 +158,19 @@ pub struct CreatePoll<'info> {
         init,
         payer = user,
         space = 8 +                  // Anchor discriminator
-               4 + question.len() +  // Question (4-byte length + string)
-               4 +                   // Options vector length
-               options.iter().map(|o| 4 + o.len()).sum::<usize>() + // Each option (4-byte length + string)
-               4 +                   // Votes vector length
-               options.len() * 4 +   // Each vote (u32)
-               4 +                   // Voters vector length
-               32 * 10 +             // Max 10 voters (Pubkey is 32 bytes)
-               8,                    // end_time (i64)
-        seeds = [b"poll", user.key().as_ref(), &user_stats.poll_count.to_le_bytes()],
+            4 + question.len() +  // Question (4-byte length + string)
+            4 +                   // Options vector length
+            options.iter().map(|o| 4 + o.len()).sum::<usize>() + // Each option (4-byte length + string)
+            4 +                   // Votes vector length (u32 per option)
+            options.len() * 4 +   // Each vote (u32)
+            4 +                   // Voters vector length
+            32 * MAX_VOTERS +     // Space for voters ([u8; 32] each)
+            1 +                  // bump (u8)
+            8 +                  // created_at (i64)
+            8 +                  // duration (i64)
+            4 +                  // voter_count (u32)
+            8,                   // seed ([u8; 8])
+        seeds = [b"poll", user_stats.key().as_ref(), &user_stats.polls_count.to_le_bytes()],
         bump
     )]
     pub poll: Account<'info, Poll>,
@@ -213,5 +227,7 @@ pub enum ErrorCode {
     #[msg("Negative duration")]
     InvalidDuration,
     #[msg("More than 5 options")]
-    TooMuchOptions
+    TooMuchOptions,
+    #[msg("User not initialized")]
+    UserNotInitialized,
 }

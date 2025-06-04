@@ -13,7 +13,7 @@ pub fn handle_create_poll(
         .expect("Could not find home directory")
         .join(".config/solana/id.json");
 
-    let payer = read_keypair_file(keypair_path)
+    let payer = read_keypair_file(&keypair_path)
         .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
     let program_id: Pubkey = "8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5".parse()?;
     let client = Client::new_with_options(
@@ -32,28 +32,20 @@ pub fn handle_create_poll(
     let user_stats = match program.account::<poll_app::UserStats>(user_stats_pda) {
         Ok(stats) => stats,
         Err(_) => {
-            // Initialize user stats if not exists
-            program
-                .request()
-                .accounts(poll_app::accounts::InitializeUserStats {
-                    user_stats: user_stats_pda,
-                    user: program.payer(),
-                    system_program: anchor_lang::system_program::ID,
-                })
-                .args(poll_app::instruction::InitializeUserStats {})
-                .send()?;
-            poll_app::UserStats { poll_count: 0 }
+            return Err(anyhow::anyhow!(
+                "User not initialized. Please run `initialize-user` first."
+            ));
         }
     };
 
-    let poll_count = user_stats.poll_count;
+    let polls_count = user_stats.polls_count;
     
     let (poll_pda, _) = Pubkey::find_program_address(
-        &[b"poll", &program.payer().to_bytes(), &poll_count.to_le_bytes()],
+        &[b"poll", &user_stats_pda.to_bytes(), &polls_count.to_le_bytes()],
         &program_id,
     );
 
-    program
+    let request = program
         .request()
         .accounts(poll_app::accounts::CreatePoll {
             poll: poll_pda,
@@ -65,9 +57,16 @@ pub fn handle_create_poll(
             question,
             options,
             duration,
-        })
-        .send()?;
+        });
 
-    println!("Poll #{} created at: {}", poll_count + 1, poll_pda);
-    Ok(())
+    match request.send() {
+        Ok(_) => {
+            println!("Poll #{} created at: {}", polls_count + 1, poll_pda);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Failed to create poll: {}", e);
+            Err(anyhow::anyhow!("Poll creation failed"))
+        }
+    }
 }
