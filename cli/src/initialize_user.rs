@@ -9,7 +9,7 @@ pub fn handle_initialize_user() -> anyhow::Result<()> {
         .expect("Could not find home directory")
         .join(".config/solana/id.json");
 
-    let payer = read_keypair_file(keypair_path)
+    let payer = read_keypair_file(&keypair_path)
         .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
     let program_id: Pubkey = "8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5".parse()?;
     let client = Client::new_with_options(
@@ -24,16 +24,28 @@ pub fn handle_initialize_user() -> anyhow::Result<()> {
         &program_id,
     );
 
-    program
+    if program.account::<poll_app::UserStats>(user_stats_pda).is_ok() {
+        println!("User already initialized at: {}", user_stats_pda);
+        return Ok(());
+    }
+
+    let request = program
         .request()
-        .accounts(poll_app::accounts::InitializeUserStats {
+        .accounts(poll_app::accounts::InitializeUser {
             user_stats: user_stats_pda,
             user: program.payer(),
             system_program: anchor_lang::system_program::ID,
         })
-        .args(poll_app::instruction::InitializeUserStats {})
-        .send()?;
+        .args(poll_app::instruction::InitializeUser {});
 
-    println!("User stats initialized at: {}", user_stats_pda);
-    Ok(())
+    match request.send() {
+        Ok(_) => {
+            println!("User stats initialized at: {}", user_stats_pda);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Failed to initialize user: {}", e);
+            Err(anyhow::anyhow!("Initialization failed"))
+        }
+    }
 }

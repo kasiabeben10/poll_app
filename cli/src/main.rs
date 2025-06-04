@@ -2,11 +2,6 @@ mod create_poll;
 mod vote;
 mod view_poll;
 mod initialize_user;
-extern crate clap;
-extern crate solana_sdk;
-extern crate anchor_client;
-extern crate dirs;
-
 use clap::{command, Parser, Subcommand};
 
 #[derive(Parser)]
