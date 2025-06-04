@@ -11,9 +11,9 @@ pub fn handle_vote(option_index: u8, poll_address: String) -> anyhow::Result<()>
 
     let payer = read_keypair_file(&keypair_path)
         .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
-    let program_id: Pubkey = "8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5".parse()?;
+    let program_id: Pubkey = "6rN7v7FDj9ub6Qvj3cpw7CxhziDy6izMMYWnTwSFfMFY".parse()?;
     let client = Client::new_with_options(
-        Cluster::Localnet,
+        Cluster::Devnet,
         Rc::new(payer),
         CommitmentConfig::processed(),
     );
@@ -41,6 +41,6 @@ pub fn handle_vote(option_index: u8, poll_address: String) -> anyhow::Result<()>
         .send()?;
 
     println!("🗳️ Your vote has been submitted successfully!");
-    println!("✅ You voted for option {} in poll {}", option_index + 1, poll_pda);
+    println!("✅ You voted for option {} in poll {}", option_index, poll_pda);
     Ok(())
 }

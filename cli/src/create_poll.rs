@@ -15,9 +15,9 @@ pub fn handle_create_poll(
 
     let payer = read_keypair_file(&keypair_path)
         .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
-    let program_id: Pubkey = "8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5".parse()?;
+    let program_id: Pubkey = "6rN7v7FDj9ub6Qvj3cpw7CxhziDy6izMMYWnTwSFfMFY".parse()?;
     let client = Client::new_with_options(
-        Cluster::Localnet,
+        Cluster::Devnet,
         Rc::new(payer),
         CommitmentConfig::processed(),
     );
