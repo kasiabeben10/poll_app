@@ -6,14 +6,14 @@ resolution = true
 skip-lint = false
 seeder = false
 
-[programs.localnet]
-poll_app = "8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5"
+[programs.devnet]
+poll_app = "6rN7v7FDj9ub6Qvj3cpw7CxhziDy6izMMYWnTwSFfMFY"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
