@@ -5,8 +5,11 @@ mod initialize_user;
 use clap::{command, Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "poll_cli")]
-#[command(about = "CLI for interacting with the poll_app on Solana", long_about = None)]
+#[command(name = "poll")]
+#[command(arg_required_else_help = true)]
+#[command(version, about = "Decentralized poll app on Solana", 
+          long_about = None,
+          after_help = "Examples:\n  poll create-poll -q \"Favorite color\" -o Red -o Blue -o Green -d 3600\n  poll vote -o 1 -p DvUMKKX...")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -16,20 +19,26 @@ struct Cli {
 enum Commands {
     InitializeUser,
     CreatePoll {
+        #[arg(short, long, required = true)]
         question: String,
-        #[arg(required = true)]
+        #[arg(short, long, required = true, help="List of options (at least one required)")]
         options: Vec<String>,
+        #[arg(short, long, help="Poll duration in seconds (if no time requirements put 0 or skip)")]
         duration: i64,
     },
     Vote {
+        #[arg(short, long, required=true, help = "Option index (starts from 1)")]
         option_index: u8,
-        poll_number: Option<u32>,
+        #[arg(short, long, required=true, help="Poll address (e.g. DvUMKKX58dNUySNKZo7buMZcniuYM1pSxWZxtqAGLne3)")]
+        poll_address: String,
     },
     ViewPoll {
-        poll_number: Option<u32>,
+        #[arg(short, long, required=true, help="Poll address (e.g. DvUMKKX58dNUySNKZo7buMZcniuYM1pSxWZxtqAGLne3)")]
+        poll_address: String,
     },
     GetWinner {
-        poll_number: Option<u32>,
+        #[arg(short, long, required=true, help="Poll address (e.g. DvUMKKX58dNUySNKZo7buMZcniuYM1pSxWZxtqAGLne3)")]
+        poll_address: String,
     },
 }
 
@@ -43,12 +52,12 @@ fn main() -> anyhow::Result<()> {
             options,
             duration,
         } => create_poll::handle_create_poll(question, options, duration)?,
-        Commands::Vote { option_index, poll_number } => 
-            vote::handle_vote(option_index, poll_number)?,
-        Commands::ViewPoll { poll_number } => 
-            view_poll::handle_view_poll(poll_number)?,
-        Commands::GetWinner { poll_number } => 
-            view_poll::handle_get_winner(poll_number)?,
+        Commands::Vote { option_index, poll_address } => 
+            vote::handle_vote(option_index, poll_address)?,
+        Commands::ViewPoll { poll_address } => 
+            view_poll::handle_view_poll(poll_address)?,
+        Commands::GetWinner { poll_address } => 
+            view_poll::handle_get_winner(poll_address)?,
     }
 
     Ok(())

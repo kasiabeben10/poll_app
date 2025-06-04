@@ -4,7 +4,7 @@ use dirs::home_dir;
 use solana_sdk::commitment_config::CommitmentConfig;
 use std::rc::Rc;
 
-pub fn handle_vote(option_index: u8, poll_number: Option<u32>) -> anyhow::Result<()> {
+pub fn handle_vote(option_index: u8, poll_address: String) -> anyhow::Result<()> {
     let keypair_path = home_dir()
         .expect("Could not find home directory")
         .join(".config/solana/id.json");
@@ -29,15 +29,7 @@ pub fn handle_vote(option_index: u8, poll_number: Option<u32>) -> anyhow::Result
         Err(_) => return Err(anyhow::anyhow!("User not initialized")),
     };
 
-    let poll_number = poll_number.unwrap_or(user_stats.polls_count);
-    if poll_number == 0 || poll_number > user_stats.polls_count {
-        return Err(anyhow::anyhow!("Invalid poll number"));
-    }
-
-    let (poll_pda, _) = Pubkey::find_program_address(
-        &[b"poll", &user_stats_pda.to_bytes(), &(poll_number - 1).to_le_bytes()],
-        &program_id,
-    );
+    let poll_pda: Pubkey = poll_address.parse()?;
 
     program
         .request()
@@ -48,6 +40,7 @@ pub fn handle_vote(option_index: u8, poll_number: Option<u32>) -> anyhow::Result
         .args(poll_app::instruction::Vote { option_index })
         .send()?;
 
-    println!("Vote submitted to poll #{}", poll_number);
+    println!("🗳️ Your vote has been submitted successfully!");
+    println!("✅ You voted for option {} in poll {}", option_index + 1, poll_pda);
     Ok(())
 }

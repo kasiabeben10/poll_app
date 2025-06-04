@@ -54,14 +54,22 @@ pub fn handle_create_poll(
             system_program: anchor_lang::system_program::ID,
         })
         .args(poll_app::instruction::CreatePoll {
-            question,
-            options,
-            duration,
+            question: question.clone(),
+            options: options.clone(),
+            duration: duration.clone(),
         });
 
     match request.send() {
         Ok(_) => {
-            println!("Poll #{} created at: {}", polls_count + 1, poll_pda);
+            println!("✅ Poll created successfully!");
+            println!("🔗 Poll address: {}", poll_pda);
+            println!("📝 Question: {}", question);
+            println!("📌 Options:");
+            for (i, option) in options.iter().enumerate() {
+                println!("  {}. {}", i + 1, option);
+            }
+            println!("Validity: {} min", duration/60 );
+
             Ok(())
         }
         Err(e) => {
