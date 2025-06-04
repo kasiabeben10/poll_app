@@ -175,16 +175,18 @@ Klient CLI jest podzielony na moduły:
 cargo run -- initialize-user
 
 # 2. Utworzenie ankiety
-cargo run -- create-poll -q "Gdzie idziemy na lunch?" -o "McDonald's" -o "KFC" -o "Subway" -d 1800
+cargo run -- create-poll -q "Jaka masz ocenę z Techniki Cyfrowej?" -o "3.0" -o "3.5" -o "4.0" -o "4.5" -o "5.0" -d 1800
 
 # Wyjście:
 # ✅ Poll created successfully!
 # 🔗 Poll address: ABC123...
-# 📝 Question: Gdzie idziemy na lunch?
+# 📝 Question: Jaka masz ocenę z Techniki Cyfrowej?
 # 📌 Options:
-#   1. McDonald's
-#   2. KFC  
-#   3. Subway
+#   0. 2.0
+#   1. 3.0  
+#   2. 3.5
+#   3. 4.0
+#   4. 4.5
 # Validity: 30 min
 
 # 3. Głosowanie
@@ -192,19 +194,21 @@ cargo run -- vote -o 2 -p ABC123...
 
 # Wyjście:
 # 🗳️ Your vote has been submitted successfully!
-# ✅ You voted for option 2 in poll ABC123...
+# ✅ You voted for option 3 in poll ABC123...
 
 # 4. Sprawdzenie wyników
 cargo run -- view-poll -p ABC123...
 
 # Wyjście:
 # 📊 Poll Results 📊
-# 🔹 Question: Gdzie idziemy na lunch?
+# 🔹 Question: Jaka masz ocenę z Techniki Cyfrowej?
 # 
 # Options:
-# 0: McDonald's - 1 votes
-# 1: KFC - 3 votes
-# 2: Subway - 0 votes
+# 0: 2.0 - 1 votes
+# 1: 3.0 - 3 votes
+# 2: 3.5 - 0 votes
+# 3: 4.0 - 0 votes
+# 4: 4.5 - 0 votes
 # -----------
 # Total voters: 4
 
