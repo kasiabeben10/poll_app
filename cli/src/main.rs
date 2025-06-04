@@ -1,6 +1,7 @@
 mod create_poll;
 mod vote;
 mod view_poll;
+mod initialize_user;
 extern crate clap;
 extern crate solana_sdk;
 extern crate anchor_client;
@@ -18,6 +19,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    InitializeUser,
     CreatePoll {
         question: String,
         #[arg(required = true)]
@@ -26,23 +28,32 @@ enum Commands {
     },
     Vote {
         option_index: u8,
+        poll_number: Option<u32>,
     },
-    ViewPoll,
-    GetWinner,
+    ViewPoll {
+        poll_number: Option<u32>,
+    },
+    GetWinner {
+        poll_number: Option<u32>,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::InitializeUser => initialize_user::handle_initialize_user()?,
         Commands::CreatePoll {
             question,
             options,
             duration,
         } => create_poll::handle_create_poll(question, options, duration)?,
-        Commands::Vote { option_index } => vote::handle_vote(option_index)?,
-        Commands::ViewPoll => view_poll::handle_view_poll()?,
-        Commands::GetWinner => view_poll::handle_get_winner()?,
+        Commands::Vote { option_index, poll_number } => 
+            vote::handle_vote(option_index, poll_number)?,
+        Commands::ViewPoll { poll_number } => 
+            view_poll::handle_view_poll(poll_number)?,
+        Commands::GetWinner { poll_number } => 
+            view_poll::handle_get_winner(poll_number)?,
     }
 
     Ok(())
