@@ -1,11 +1,10 @@
-use anchor_client::solana_sdk::{pubkey::Pubkey};
-use solana_sdk::signature::read_keypair_file;
+use anchor_client::solana_sdk::{pubkey::Pubkey, signature::read_keypair_file};
 use anchor_client::{Client, Cluster};
+use dirs::home_dir;
 use solana_sdk::commitment_config::CommitmentConfig;
 use std::rc::Rc;
-use dirs::home_dir;
 
-pub fn handle_vote(option_index: u8, poll_number: Option<u32>) -> anyhow::Result<()> {
+pub fn handle_initialize_user() -> anyhow::Result<()> {
     let keypair_path = home_dir()
         .expect("Could not find home directory")
         .join(".config/solana/id.json");
@@ -20,32 +19,21 @@ pub fn handle_vote(option_index: u8, poll_number: Option<u32>) -> anyhow::Result
     );
     let program = client.program(program_id)?;
 
-    // Get user stats to get poll count
     let (user_stats_pda, _) = Pubkey::find_program_address(
         &[b"user_stats", &program.payer().to_bytes()],
-        &program_id,
-    );
-    let user_stats: poll_app::UserStats = program.account(user_stats_pda)?;
-
-    let poll_number = poll_number.unwrap_or(user_stats.poll_count);
-    if poll_number == 0 || poll_number > user_stats.poll_count {
-        return Err(anyhow::anyhow!("Invalid poll number"));
-    }
-
-    let (poll_pda, _) = Pubkey::find_program_address(
-        &[b"poll", &program.payer().to_bytes(), &(poll_number - 1).to_le_bytes()],
         &program_id,
     );
 
     program
         .request()
-        .accounts(poll_app::accounts::Vote {
-            poll: poll_pda,
+        .accounts(poll_app::accounts::InitializeUserStats {
+            user_stats: user_stats_pda,
             user: program.payer(),
+            system_program: anchor_lang::system_program::ID,
         })
-        .args(poll_app::instruction::Vote { option_index })
+        .args(poll_app::instruction::InitializeUserStats {})
         .send()?;
 
-    println!("Vote submitted to poll #{}", poll_number);
+    println!("User stats initialized at: {}", user_stats_pda);
     Ok(())
 }

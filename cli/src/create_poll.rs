@@ -3,7 +3,6 @@ use anchor_client::{Client, Cluster};
 use dirs::home_dir;
 use solana_sdk::commitment_config::CommitmentConfig;
 use std::rc::Rc;
-use solana_sdk::system_program;
 
 pub fn handle_create_poll(
     question: String,
@@ -11,27 +10,57 @@ pub fn handle_create_poll(
     duration: i64,
 ) -> anyhow::Result<()> {
     let keypair_path = home_dir()
-    .expect("Could not find home directory")
-    .join(".config/solana/id.json");
+        .expect("Could not find home directory")
+        .join(".config/solana/id.json");
 
     let payer = read_keypair_file(keypair_path)
-    .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
     let program_id: Pubkey = "8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5".parse()?;
-    let client = Client::new_with_options(Cluster::Localnet, Rc::new(payer), CommitmentConfig::processed());
+    let client = Client::new_with_options(
+        Cluster::Localnet,
+        Rc::new(payer),
+        CommitmentConfig::processed(),
+    );
     let program = client.program(program_id)?;
 
-    let poll_pda = Pubkey::find_program_address(&[b"poll", &program.payer().to_bytes()], &program_id).0;
+    // Get or initialize user stats
+    let (user_stats_pda, _) = Pubkey::find_program_address(
+        &[b"user_stats", &program.payer().to_bytes()],
+        &program_id,
+    );
+
+    let user_stats = match program.account::<poll_app::UserStats>(user_stats_pda) {
+        Ok(stats) => stats,
+        Err(_) => {
+            // Initialize user stats if not exists
+            program
+                .request()
+                .accounts(poll_app::accounts::InitializeUserStats {
+                    user_stats: user_stats_pda,
+                    user: program.payer(),
+                    system_program: anchor_lang::system_program::ID,
+                })
+                .args(poll_app::instruction::InitializeUserStats {})
+                .send()?;
+            poll_app::UserStats { poll_count: 0 }
+        }
+    };
+
+    let poll_count = user_stats.poll_count;
+    
+    let (poll_pda, _) = Pubkey::find_program_address(
+        &[b"poll", &program.payer().to_bytes(), &poll_count.to_le_bytes()],
+        &program_id,
+    );
 
     program
         .request()
-        .accounts(anchor_lang::ToAccountMetas::to_account_metas(
-            &poll_app::accounts::CreatePoll {
-                poll: poll_pda,
-                user: program.payer(),
-                system_program: system_program::ID
-            },
-            None,
-        ))
+        .accounts(poll_app::accounts::CreatePoll {
+            poll: poll_pda,
+            user: program.payer(),
+            user_stats: user_stats_pda,
+            system_program: anchor_lang::system_program::ID,
+        })
         .args(poll_app::instruction::CreatePoll {
             question,
             options,
@@ -39,6 +68,6 @@ pub fn handle_create_poll(
         })
         .send()?;
 
-    println!("Poll created at: {}", poll_pda);
+    println!("Poll #{} created at: {}", poll_count + 1, poll_pda);
     Ok(())
 }
