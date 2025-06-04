@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::AnchorSerialize;
 use anchor_lang::solana_program::hash::hash as sha256;
 
-declare_id!("8hLpnr7jBwD3UsS5DvbQF4mLK6qzyg6KQFmePsJrwMR5");
+declare_id!("6rN7v7FDj9ub6Qvj3cpw7CxhziDy6izMMYWnTwSFfMFY");
 
 #[program]
 pub mod poll_app {

@@ -10,7 +10,7 @@ pub async fn handle() {
 
     let payer = read_keypair_file(keypair_path)
     .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
-    let client = Client::new(Cluster::Localnet, Rc::new(payer));
+    let client = Client::new(Cluster::Devnet, Rc::new(payer));
     let program = client.program(poll_app::ID);
 
     let (poll_pda, _) = Pubkey::find_program_address(&[b"poll", &program.payer().to_bytes()], &poll_app::ID);
