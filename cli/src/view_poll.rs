@@ -19,16 +19,6 @@ pub fn handle_view_poll(poll_address: String) -> anyhow::Result<()> {
     );
     let program = client.program(program_id)?;
 
-    let (user_stats_pda, _) = Pubkey::find_program_address(
-        &[b"user_stats", &program.payer().to_bytes()],
-        &program_id,
-    );
-    
-    let user_stats = match program.account::<poll_app::UserStats>(user_stats_pda) {
-        Ok(stats) => stats,
-        Err(_) => return Err(anyhow::anyhow!("User not initialized")),
-    };
-
     let poll_pda: Pubkey = poll_address.parse()?;
     let poll_account: poll_app::Poll = program.account(poll_pda)?;
 
@@ -58,16 +48,6 @@ pub fn handle_get_winner(poll_address: String) -> anyhow::Result<()> {
         CommitmentConfig::processed(),
     );
     let program = client.program(program_id)?;
-
-    let (user_stats_pda, _) = Pubkey::find_program_address(
-        &[b"user_stats", &program.payer().to_bytes()],
-        &program_id,
-    );
-    
-    let user_stats = match program.account::<poll_app::UserStats>(user_stats_pda) {
-        Ok(stats) => stats,
-        Err(_) => return Err(anyhow::anyhow!("User not initialized")),
-    };
 
     let poll_pda: Pubkey = poll_address.parse()?;
     let poll_account: poll_app::Poll = program.account(poll_pda)?;

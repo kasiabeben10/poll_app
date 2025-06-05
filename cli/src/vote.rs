@@ -19,16 +19,6 @@ pub fn handle_vote(option_index: u8, poll_address: String) -> anyhow::Result<()>
     );
     let program = client.program(program_id)?;
 
-    let (user_stats_pda, _) = Pubkey::find_program_address(
-        &[b"user_stats", &program.payer().to_bytes()],
-        &program_id,
-    );
-    
-    let user_stats = match program.account::<poll_app::UserStats>(user_stats_pda) {
-        Ok(stats) => stats,
-        Err(_) => return Err(anyhow::anyhow!("User not initialized")),
-    };
-
     let poll_pda: Pubkey = poll_address.parse()?;
 
     program
